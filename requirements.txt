@@ -1,0 +1,9 @@
+Flask
+pandas
+PyMuPDF
+matplotlib
+openpyxl
+pytesseract
+Pillow
+Werkzeug
+gunicorn

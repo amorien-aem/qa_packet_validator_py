@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<meta name='author' content='Adam Morien'>
+<meta name='description' content='QA Packet Validator Web App'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>QA Packet Validator</title>
+</head>
+<body>
+<h2>Upload file for validation</h2>
+<form method="post" action="/api/validate" enctype="multipart/form-data">
+	<input type="file" name="file">
+	<input type="submit" value="Upload and Validate">
+</form>
+<div id="progress-container" style="display:none; margin-top:10px;">
+	<label for="progress-bar">Validation Progress:</label>
+	<progress id="progress-bar" value="0" max="100" style="width:300px;"></progress>
+	<span id="progress-percent">0%</span>
+</div>
+<div id="download-link"></div>
+<script>
+document.querySelector('form').onsubmit = async function(e) {
+	e.preventDefault();
+	document.getElementById('download-link').innerText = '';
+	const formData = new FormData(this);
+	try {
+		const res = await fetch('/api/validate', {method: 'POST', body: formData});
+		const data = await res.json();
+		if (res.ok && data.progressKey) {
+			document.getElementById('progress-container').style.display = '';
+			const progressBar = document.getElementById('progress-bar');
+			const progressPercent = document.getElementById('progress-percent');
+			let percent = 0;
+			let pollInterval = setInterval(async () => {
+				const resp = await fetch(`/api/progress/${data.progressKey}`);
+				const prog = await resp.json();
+				percent = prog.percent;
+				progressBar.value = percent;
+				progressPercent.innerText = percent + '%';
+				if (percent >= 100) {
+					clearInterval(pollInterval);
+					document.getElementById('download-link').innerHTML =
+						`<a href="/download/${formData.get('file').name.replace(/\.[^.]+$/, '.csv')}" download>Download CSV</a>`;
+					document.getElementById('progress-container').style.display = 'none';
+				}
+			}, 1000);
+		} else {
+			let msg = 'Validation failed.';
+			if (data && data.error) msg += ' ' + data.error;
+			document.getElementById('download-link').innerText = msg;
+		}
+	} catch (err) {
+		document.getElementById('download-link').innerText = 'Validation failed. ' + err;
+	}
+}
+</script>
+</body>
+</html>
